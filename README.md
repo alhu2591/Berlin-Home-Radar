@@ -70,3 +70,22 @@ This project includes a GitHub Actions workflow at `.github/workflows/android-bu
 - Professional filters: favorites, query, rooms, area, max price, district, source, Jobcenter, Wohngeld, WBS
 - Sync interval selection: manual, 15 min, 30 min, 1 hour, 3 hours
 - Catalog of major Berlin housing sources, with automated sync clearly marked only for supported adapters
+
+## Production extras included
+
+- Debug network security configuration that trusts user-installed certificates in debug builds, which helps when testing behind corporate proxies or local inspection tools.
+- Friendly sync error messages instead of exposing raw SSL exceptions in the UI.
+- Release workflow for APK/AAB output via GitHub Actions.
+- Optional signing via GitHub secrets:
+  - `ANDROID_KEYSTORE_BASE64`
+  - `ANDROID_KEYSTORE_PASSWORD`
+  - `ANDROID_KEY_ALIAS`
+  - `ANDROID_KEY_PASSWORD`
+- First-run onboarding screen.
+- Unit tests for deduplication and sync interval mapping.
+- Pluggable telemetry interfaces (`AnalyticsLogger`, `CrashReporter`) with logcat implementations by default.
+
+## Optional Firebase setup
+
+This project does **not** force Firebase so the repository continues to build without a `google-services.json` file.
+If you want real production crash reporting and analytics, wire the telemetry interfaces to Firebase Crashlytics and Analytics after adding Firebase configuration for your app. Firebase's official Android setup requires adding Firebase to the project and then adding the Crashlytics SDK and, for breadcrumb logs, enabling Analytics. citeturn459038search0turn459038search8
