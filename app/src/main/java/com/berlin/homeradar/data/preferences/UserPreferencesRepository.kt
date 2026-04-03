@@ -46,6 +46,7 @@ class UserPreferencesRepository @Inject constructor(
         val SourceOrder = stringPreferencesKey("source_order")
         val SavedSearches = stringPreferencesKey("saved_searches")
         val SeenAlertMatches = stringPreferencesKey("seen_alert_matches")
+        val OnboardingCompleted = booleanPreferencesKey("onboarding_completed")
     }
 
     val appSettings: Flow<AppSettings> = dataStore.data.map { prefs ->
@@ -70,8 +71,13 @@ class UserPreferencesRepository @Inject constructor(
 
     val enabledSourceIds: Flow<Set<String>> = appSettings.map { it.enabledSourceIds }
     val savedSearches: Flow<List<SavedSearch>> = appSettings.map { it.savedSearches }
+    val onboardingCompleted: Flow<Boolean> = dataStore.data.map { it[Keys.OnboardingCompleted] ?: false }
 
     suspend fun appSettingsSnapshot(): AppSettings = appSettings.first()
+
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        dataStore.edit { it[Keys.OnboardingCompleted] = completed }
+    }
 
     suspend fun setBackgroundSyncEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.BackgroundSyncEnabled] = enabled }

@@ -7,6 +7,10 @@ import com.berlin.homeradar.data.local.AppDatabase
 import com.berlin.homeradar.data.local.dao.HousingListingDao
 import com.berlin.homeradar.data.local.dao.SyncStatusDao
 import com.berlin.homeradar.data.remote.api.RemoteListingsService
+import com.berlin.homeradar.data.telemetry.AnalyticsLogger
+import com.berlin.homeradar.data.telemetry.CrashReporter
+import com.berlin.homeradar.data.telemetry.LogcatAnalyticsLogger
+import com.berlin.homeradar.data.telemetry.LogcatCrashReporter
 import com.berlin.homeradar.data.repository.HousingRepositoryImpl
 import com.berlin.homeradar.domain.repository.HousingRepository
 import dagger.Binds
@@ -52,7 +56,18 @@ object AppProvidesModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder().build()
+    fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+        .retryOnConnectionFailure(true)
+        .callTimeout(java.time.Duration.ofSeconds(30))
+        .connectTimeout(java.time.Duration.ofSeconds(20))
+        .readTimeout(java.time.Duration.ofSeconds(30))
+        .addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .header("User-Agent", "BerlinHomeRadar/1.1 (Android)")
+                .build()
+            chain.proceed(request)
+        }
+        .build()
 
     @Provides
     @Singleton
@@ -76,4 +91,10 @@ object AppProvidesModule {
 abstract class AppBindsModule {
     @Binds
     abstract fun bindHousingRepository(impl: HousingRepositoryImpl): HousingRepository
+
+    @Binds
+    abstract fun bindAnalyticsLogger(impl: LogcatAnalyticsLogger): AnalyticsLogger
+
+    @Binds
+    abstract fun bindCrashReporter(impl: LogcatCrashReporter): CrashReporter
 }

@@ -6,6 +6,10 @@ import com.berlin.homeradar.data.local.entity.SyncStatusEntity
 import com.berlin.homeradar.data.local.mapper.toDomain
 import com.berlin.homeradar.data.preferences.UserPreferencesRepository
 import com.berlin.homeradar.data.source.ListingSourceRegistry
+import com.berlin.homeradar.data.telemetry.AnalyticsLogger
+import com.berlin.homeradar.data.telemetry.CrashReporter
+import java.security.cert.CertPathValidatorException
+import javax.net.ssl.SSLException
 import com.berlin.homeradar.data.source.SourceCatalog
 import com.berlin.homeradar.domain.model.AppLanguage
 import com.berlin.homeradar.domain.model.HousingListing
@@ -30,6 +34,8 @@ class HousingRepositoryImpl @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val listingSourceRegistry: ListingSourceRegistry,
     private val deduplicationPolicy: DeduplicationPolicy,
+    private val analyticsLogger: AnalyticsLogger,
+    private val crashReporter: CrashReporter,
 ) : HousingRepository {
 
     override fun observeListings(
@@ -84,6 +90,7 @@ class HousingRepositoryImpl @Inject constructor(
         )
 
         runCatching {
+            analyticsLogger.logEvent("refresh_started", mapOf("trigger" to trigger))
             val listings = listingSourceRegistry.getEnabledSources().flatMap { it.fetch() }
             listings.forEach { incoming ->
                 val directMatch = housingListingDao.getBySourceAndExternalId(
@@ -116,12 +123,15 @@ class HousingRepositoryImpl @Inject constructor(
                     lastErrorMessage = null,
                 )
             )
+            analyticsLogger.logEvent("refresh_completed", mapOf("trigger" to trigger, "count" to listings.size.toString()))
         }.onFailure { throwable ->
+            crashReporter.recordNonFatal(throwable, mapOf("trigger" to trigger))
+            analyticsLogger.logEvent("refresh_failed", mapOf("trigger" to trigger, "reason" to (throwable::class.java.simpleName)))
             syncStatusDao.upsert(
                 currentStatus.copy(
                     lastAttemptMillis = now,
                     isSyncing = false,
-                    lastErrorMessage = throwable.message ?: "Refresh failed",
+                    lastErrorMessage = throwable.toUserMessage(),
                 )
             )
         }
@@ -152,3 +162,17 @@ class HousingRepositoryImpl @Inject constructor(
     override suspend fun exportBackupJson(): String = userPreferencesRepository.exportBackupJson()
     override suspend fun importBackupJson(json: String): Result<Unit> = userPreferencesRepository.replaceAllFromBackup(json)
 }
+
+
+    private fun Throwable.toUserMessage(): String {
+        val message = message.orEmpty()
+        return when {
+            this is SSLException || this is CertPathValidatorException || message.contains("CertPathValidatorException", ignoreCase = true) -> {
+                "Secure connection failed for one or more sources. Open the source in your browser or try again later."
+            }
+            message.contains("Unable to resolve host", ignoreCase = true) -> {
+                "No internet connection. Check your network and try again."
+            }
+            else -> message.ifBlank { "Refresh failed. Please try again later." }
+        }
+    }

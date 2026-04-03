@@ -28,13 +28,19 @@ import com.berlin.homeradar.presentation.screen.webview.InAppBrowserScreen
 import com.berlin.homeradar.R
 import com.berlin.homeradar.presentation.screen.details.ListingDetailsRoute
 import com.berlin.homeradar.presentation.screen.listings.ListingsRoute
+import com.berlin.homeradar.presentation.screen.onboarding.OnboardingRoute
 import com.berlin.homeradar.presentation.screen.savedsearches.SavedSearchesRoute
 import com.berlin.homeradar.presentation.screen.settings.SettingsRoute
 import com.berlin.homeradar.presentation.screen.settings.SourceManagerRoute
+import com.berlin.homeradar.presentation.screen.onboarding.OnboardingViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
 
 @Composable
 fun BerlinHomeRadarNavGraph() {
     val navController = rememberNavController()
+    val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+    val onboardingCompleted by onboardingViewModel.completed.collectAsState()
     val context = LocalContext.current
     val items = listOf(Screen.Listings, Screen.Settings)
 
@@ -75,7 +81,16 @@ fun BerlinHomeRadarNavGraph() {
             }
         }
     ) { padding ->
-        NavHost(navController = navController, startDestination = Screen.Listings.route, modifier = Modifier.padding(padding)) {
+        NavHost(navController = navController, startDestination = if (onboardingCompleted) Screen.Listings.route else Screen.Onboarding.route, modifier = Modifier.padding(padding)) {
+            composable(Screen.Onboarding.route) {
+                OnboardingRoute(
+                    onFinished = {
+                        navController.navigate(Screen.Listings.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
             composable(Screen.Listings.route) {
                 ListingsRoute(
                     onListingClick = { navController.navigate(Screen.ListingDetails.createRoute(it)) },
