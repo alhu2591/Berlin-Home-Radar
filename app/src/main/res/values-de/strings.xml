@@ -63,4 +63,9 @@
     <string name="sync_30m">Alle 30 Min.</string>
     <string name="sync_1h">Alle 1 Stunde</string>
     <string name="sync_3h">Alle 3 Stunden</string>
+    <string name="interval_manual">Manuell</string>
+    <string name="interval_15m">Alle 15 Minuten</string>
+    <string name="interval_30m">Alle 30 Minuten</string>
+    <string name="interval_1h">Jede Stunde</string>
+    <string name="interval_3h">Alle 3 Stunden</string>
 </resources>

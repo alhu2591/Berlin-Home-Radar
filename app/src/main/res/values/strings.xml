@@ -86,4 +86,9 @@
     <string name="nav_saved_searches">Saved searches</string>
     <string name="open_inside_app">Open inside app</string>
     <string name="in_app_browser_title">Listing browser</string>
+    <string name="interval_manual">Manual</string>
+    <string name="interval_15m">Every 15 minutes</string>
+    <string name="interval_30m">Every 30 minutes</string>
+    <string name="interval_1h">Every 1 hour</string>
+    <string name="interval_3h">Every 3 hours</string>
 </resources>

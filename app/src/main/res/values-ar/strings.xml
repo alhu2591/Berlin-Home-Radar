@@ -63,4 +63,9 @@
     <string name="sync_30m">كل 30 دقيقة</string>
     <string name="sync_1h">كل ساعة</string>
     <string name="sync_3h">كل 3 ساعات</string>
+    <string name="interval_manual">يدوي</string>
+    <string name="interval_15m">كل 15 دقيقة</string>
+    <string name="interval_30m">كل 30 دقيقة</string>
+    <string name="interval_1h">كل ساعة</string>
+    <string name="interval_3h">كل 3 ساعات</string>
 </resources>
