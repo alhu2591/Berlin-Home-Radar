@@ -21,7 +21,7 @@ class DeduplicationPolicy @Inject constructor() {
     fun normalize(value: String): String = value
         .trim()
         .lowercase(Locale.GERMANY)
-        .replace(Regex("\s+"), " ")
+        .replace(Regex("\\s+"), " ")
 
     fun merge(existing: HousingListingEntity, incoming: RawListing, now: Long): HousingListingEntity {
         return existing.copy(
