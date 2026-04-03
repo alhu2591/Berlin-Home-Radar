@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.berlin.homeradar.presentation.screen.listings
 
 import androidx.compose.foundation.clickable
@@ -350,6 +352,6 @@ private fun intervalLabel(option: SyncIntervalOption): String = when (option) {
     SyncIntervalOption.MANUAL -> "Manual"
     SyncIntervalOption.MINUTES_15 -> "15 min"
     SyncIntervalOption.MINUTES_30 -> "30 min"
-    SyncIntervalOption.HOURLY -> "1 hour"
-    SyncIntervalOption.THREE_HOURLY -> "3 hours"
+    SyncIntervalOption.HOUR_1 -> "1 hour"
+    SyncIntervalOption.HOURS_3 -> "3 hours"
 }

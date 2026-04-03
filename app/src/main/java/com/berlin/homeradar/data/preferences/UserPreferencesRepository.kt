@@ -230,6 +230,19 @@ class UserPreferencesRepository @Inject constructor(
         }
     }
 
+
+    suspend fun getSeenAlertMatches(): Map<String, Set<Long>> {
+        val raw = dataStore.data.first()[Keys.SeenAlertMatches]
+        if (raw.isNullOrBlank()) return emptyMap()
+        return runCatching { json.decodeFromString<Map<String, Set<Long>>>(raw) }.getOrDefault(emptyMap())
+    }
+
+    suspend fun markSeenAlertMatches(matches: Map<String, Set<Long>>) {
+        dataStore.edit { prefs ->
+            prefs[Keys.SeenAlertMatches] = json.encodeToString(matches)
+        }
+    }
+
     private fun defaultEnabledSourceIds(remoteEnabled: Boolean): Set<String> {
         val defaults = SourceCatalog.all.filter { it.supportsAutomatedSync }.map { it.id }.toMutableSet()
         if (!remoteEnabled) defaults.remove(SourceCatalog.RemoteJson.id)

@@ -73,7 +73,7 @@ class HousingRepositoryImpl @Inject constructor(
 
     override suspend fun refreshListings(trigger: String): Result<Unit> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        val currentStatus = syncStatusDao.observeOnce() ?: SyncStatusEntity()
+        val currentStatus = syncStatusDao.get() ?: SyncStatusEntity()
 
         syncStatusDao.upsert(
             currentStatus.copy(
