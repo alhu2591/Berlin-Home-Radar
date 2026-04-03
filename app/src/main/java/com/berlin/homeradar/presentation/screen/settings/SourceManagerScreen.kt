@@ -13,10 +13,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.OpenInBrowser
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ElevatedAssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -88,15 +93,23 @@ fun SourceManagerScreen(
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
             contentPadding = PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
                 Card {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(stringResource(R.string.settings_sources_subtitle), style = MaterialTheme.typography.bodyMedium)
-                        Text(stringResource(R.string.source_health_summary), style = MaterialTheme.typography.bodySmall)
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text("Source control center", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            "The app keeps going even when one source fails. Test sources, disable noisy feeds, reorder priority, and remove custom sources here.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = onEnableAll) { Text(stringResource(R.string.enable_all_label)) }
                             OutlinedButton(onClick = onDisableAll) { Text(stringResource(R.string.disable_all_label)) }
@@ -109,6 +122,7 @@ fun SourceManagerScreen(
                     }
                 }
             }
+
             itemsIndexed(state.sources, key = { _, item -> item.id }) { index, source ->
                 SourceManagerItem(
                     index = index,
@@ -144,95 +158,78 @@ private fun SourceManagerItem(
     onTest: () -> Unit,
     onRemove: (() -> Unit)?,
 ) {
-    Card(onClick = onOpen) {
-        Column {
+    Card {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ListItem(
                 headlineContent = { Text("${index + 1}. ${source.displayName}") },
                 supportingContent = {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(source.description)
                         Text(source.websiteUrl, style = MaterialTheme.typography.bodySmall)
-                        Text(
-                            text = stringResource(R.string.source_type_format, stringResource(sourceTypeLabel(source.sourceType))),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                        Text(
-                            text = stringResource(
-                                R.string.source_status_format,
-                                stringResource(healthStatusLabel(health?.status ?: defaultStatusFor(source))),
-                                health?.message ?: defaultMessageFor(source),
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ElevatedAssistChip(
+                                onClick = {},
+                                label = { Text(sourceTypeText(source.sourceType)) },
+                            )
+                            ElevatedAssistChip(
+                                onClick = {},
+                                label = { Text(healthText(health?.status ?: defaultStatusFor(source))) },
+                            )
+                        }
+                        if (!health?.message.isNullOrBlank()) {
+                            Text(health?.message.orEmpty(), style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 },
                 trailingContent = {
-                    Text(
-                        text = when {
-                            source.supportsAutomatedSync -> stringResource(R.string.supported_sync_label)
-                            source.isUserAdded -> stringResource(R.string.custom_source_label)
-                            else -> stringResource(R.string.catalog_only_label)
-                        },
-                        style = MaterialTheme.typography.labelMedium,
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = onEnabledChanged,
+                        enabled = source.supportsAutomatedSync || source.isUserAdded,
                     )
                 },
             )
+
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(onClick = onMoveUp, enabled = canMoveUp) { Icon(Icons.Outlined.ArrowUpward, contentDescription = null) }
-                    IconButton(onClick = onMoveDown, enabled = canMoveDown) { Icon(Icons.Outlined.ArrowDownward, contentDescription = null) }
-                }
-                if (source.supportsAutomatedSync) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.settings_include_in_sync), style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = enabled, onCheckedChange = onEnabledChanged)
-                    }
-                } else {
-                    Text(text = stringResource(R.string.settings_catalog_note), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedButton(onClick = onOpen) { Text(stringResource(R.string.open_source_label)) }
-                OutlinedButton(onClick = onTest) { Text(stringResource(R.string.test_source_label)) }
+                OutlinedButton(onClick = onOpen) {
+                    Icon(Icons.Outlined.OpenInBrowser, contentDescription = null)
+                    Text(" Open")
+                }
+                OutlinedButton(
+                    onClick = onTest,
+                    enabled = source.supportsAutomatedSync || source.isUserAdded,
+                ) {
+                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
+                    Text(" Test")
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                IconButton(onClick = onMoveUp, enabled = canMoveUp) {
+                    Icon(Icons.Outlined.ArrowUpward, contentDescription = null)
+                }
+                IconButton(onClick = onMoveDown, enabled = canMoveDown) {
+                    Icon(Icons.Outlined.ArrowDownward, contentDescription = null)
+                }
                 if (onRemove != null) {
-                    TextButton(onClick = onRemove) { Text(stringResource(R.string.delete_label)) }
+                    IconButton(onClick = onRemove) {
+                        Icon(Icons.Outlined.DeleteOutline, contentDescription = null)
+                    }
                 }
             }
         }
     }
-}
-
-private fun sourceTypeLabel(sourceType: SourceType): Int = when (sourceType) {
-    SourceType.API -> R.string.source_type_api
-    SourceType.HTML -> R.string.source_type_html
-    SourceType.WEBVIEW -> R.string.source_type_webview
-    SourceType.CATALOG -> R.string.source_type_catalog
-}
-
-private fun healthStatusLabel(status: SourceHealthStatus): Int = when (status) {
-    SourceHealthStatus.IDLE -> R.string.source_status_idle
-    SourceHealthStatus.CHECKING -> R.string.source_status_checking
-    SourceHealthStatus.SUCCESS -> R.string.source_status_success
-    SourceHealthStatus.FAILED -> R.string.source_status_failed
-    SourceHealthStatus.UNSUPPORTED -> R.string.source_status_unsupported
-}
-
-private fun defaultStatusFor(source: SourceDefinition): SourceHealthStatus = when {
-    source.supportsAutomatedSync -> SourceHealthStatus.IDLE
-    source.sourceType == SourceType.CATALOG -> SourceHealthStatus.UNSUPPORTED
-    else -> SourceHealthStatus.IDLE
-}
-
-private fun defaultMessageFor(source: SourceDefinition): String = when {
-    source.supportsAutomatedSync -> "Ready for local-only sync testing."
-    source.sourceType == SourceType.WEBVIEW -> "Requires a dedicated WebView-assisted adapter before automated sync."
-    else -> "Catalog-only source."
 }
 
 @Composable
@@ -241,23 +238,37 @@ private fun AddSourceDialog(
     onConfirm: (String, String, String) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("https://") }
+    var url by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    val isValid = name.isNotBlank() && url.startsWith("http")
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_add_source)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.settings_add_source_hint))
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.source_name_label)) }, singleLine = true)
-                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text(stringResource(R.string.source_url_label)) }, singleLine = true)
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text(stringResource(R.string.source_description_label)) })
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.settings_add_source_hint), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.source_name_label)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text(stringResource(R.string.source_url_label)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text(stringResource(R.string.source_description_label)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(name.trim(), url.trim(), description.trim()) }, enabled = isValid) {
+            TextButton(onClick = { onConfirm(name, url, description) }) {
                 Text(stringResource(R.string.add_label))
             }
         },
@@ -267,4 +278,27 @@ private fun AddSourceDialog(
             }
         },
     )
+}
+
+@Composable
+private fun sourceTypeText(type: SourceType): String = when (type) {
+    SourceType.API -> "API"
+    SourceType.HTML -> "HTML"
+    SourceType.WEBVIEW -> "WebView"
+    SourceType.CATALOG -> "Catalog"
+}
+
+@Composable
+private fun healthText(status: SourceHealthStatus): String = when (status) {
+    SourceHealthStatus.IDLE -> "Idle"
+    SourceHealthStatus.CHECKING -> "Checking"
+    SourceHealthStatus.SUCCESS -> "Healthy"
+    SourceHealthStatus.FAILED -> "Failed"
+    SourceHealthStatus.UNSUPPORTED -> "Catalog only"
+}
+
+private fun defaultStatusFor(source: SourceDefinition): SourceHealthStatus = when {
+    source.supportsAutomatedSync -> SourceHealthStatus.IDLE
+    source.sourceType == SourceType.CATALOG -> SourceHealthStatus.UNSUPPORTED
+    else -> SourceHealthStatus.IDLE
 }

@@ -91,8 +91,39 @@ class HousingRepositoryImpl @Inject constructor(
 
         runCatching {
             analyticsLogger.logEvent("refresh_started", mapOf("trigger" to trigger))
-            val listings = listingSourceRegistry.getEnabledSources().flatMap { it.fetch() }
-            listings.forEach { incoming ->
+
+            val enabledSources = listingSourceRegistry.getEnabledSources()
+            val collectedListings = mutableListOf<com.berlin.homeradar.data.source.model.RawListing>()
+            val failedSources = mutableListOf<String>()
+
+            enabledSources.forEach { source ->
+                val sourceResult = runCatching { source.fetch() }
+                sourceResult
+                    .onSuccess { listings ->
+                        collectedListings += listings
+                        analyticsLogger.logEvent(
+                            "source_refresh_success",
+                            mapOf("source" to source.sourceId, "count" to listings.size.toString()),
+                        )
+                    }
+                    .onFailure { throwable ->
+                        failedSources += "${SourceCatalog.nameFor(source.sourceId)}: ${throwable.toUserMessage()}"
+                        crashReporter.recordNonFatal(
+                            throwable,
+                            mapOf("trigger" to trigger, "source" to source.sourceId),
+                        )
+                        analyticsLogger.logEvent(
+                            "source_refresh_failed",
+                            mapOf("trigger" to trigger, "source" to source.sourceId),
+                        )
+                    }
+            }
+
+            if (collectedListings.isEmpty() && failedSources.isNotEmpty()) {
+                error(failedSources.joinToString(separator = "\n"))
+            }
+
+            collectedListings.forEach { incoming ->
                 val directMatch = housingListingDao.getBySourceAndExternalId(
                     source = incoming.source,
                     externalId = incoming.externalId,
@@ -120,13 +151,24 @@ class HousingRepositoryImpl @Inject constructor(
                     lastAttemptMillis = now,
                     lastSuccessfulSyncMillis = now,
                     isSyncing = false,
-                    lastErrorMessage = null,
+                    lastErrorMessage = failedSources.takeIf { it.isNotEmpty() }?.joinToString(separator = "\n"),
                 )
             )
-            analyticsLogger.logEvent("refresh_completed", mapOf("trigger" to trigger, "count" to listings.size.toString()))
+
+            analyticsLogger.logEvent(
+                "refresh_completed",
+                mapOf(
+                    "trigger" to trigger,
+                    "count" to collectedListings.size.toString(),
+                    "failedSources" to failedSources.size.toString(),
+                ),
+            )
         }.onFailure { throwable ->
             crashReporter.recordNonFatal(throwable, mapOf("trigger" to trigger))
-            analyticsLogger.logEvent("refresh_failed", mapOf("trigger" to trigger, "reason" to (throwable::class.java.simpleName)))
+            analyticsLogger.logEvent(
+                "refresh_failed",
+                mapOf("trigger" to trigger, "reason" to throwable::class.java.simpleName),
+            )
             syncStatusDao.upsert(
                 currentStatus.copy(
                     lastAttemptMillis = now,
