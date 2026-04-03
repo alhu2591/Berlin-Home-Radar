@@ -2,19 +2,19 @@ package com.berlin.homeradar.data.sync
 
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.Operation
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.berlin.homeradar.data.preferences.UserPreferencesRepository
+import com.berlin.homeradar.domain.model.SyncIntervalOption
+import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
-import javax.inject.Inject
-import javax.inject.Singleton
 
 @Singleton
 class SyncScheduler @Inject constructor(
@@ -24,23 +24,27 @@ class SyncScheduler @Inject constructor(
 
     fun ensurePeriodicSync() {
         CoroutineScope(Dispatchers.Default).launch {
-            if (userPreferencesRepository.backgroundSyncEnabled.first()) {
-                schedulePeriodicSync()
+            val settings = userPreferencesRepository.appSettings.first()
+            if (settings.backgroundSyncEnabled) {
+                schedulePeriodicSync(settings.syncInterval)
             } else {
                 cancelPeriodicSync()
             }
         }
     }
 
-    fun schedulePeriodicSync() {
+    fun schedulePeriodicSync(interval: SyncIntervalOption = SyncIntervalOption.MINUTES_15) {
+        if (interval.minutes == null) {
+            cancelPeriodicSync()
+            return
+        }
+
         val request = PeriodicWorkRequestBuilder<ListingsSyncWorker>(
-            repeatInterval = 15,
+            repeatInterval = interval.minutes,
             repeatIntervalTimeUnit = TimeUnit.MINUTES,
         )
             .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build()
+                Constraints.Builder().build()
             )
             .build()
 

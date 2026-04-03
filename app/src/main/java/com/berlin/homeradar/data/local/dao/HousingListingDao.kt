@@ -23,6 +23,13 @@ interface HousingListingDao {
         district: String?,
     ): Flow<List<HousingListingEntity>>
 
+
+    @Query("SELECT * FROM housing_listing ORDER BY updatedAtEpochMillis DESC, priceEuro ASC")
+    suspend fun getAll(): List<HousingListingEntity>
+
+    @Query("SELECT * FROM housing_listing WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): HousingListingEntity?
+
     @Query("SELECT * FROM housing_listing WHERE source = :source AND externalId = :externalId LIMIT 1")
     suspend fun getBySourceAndExternalId(source: String, externalId: String): HousingListingEntity?
 

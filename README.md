@@ -56,3 +56,17 @@ This project contains no API keys or hardcoded secrets. The optional remote sour
 - Network failures never erase local data.
 - Sync status is persisted and surfaced in UI.
 - Source adapters are isolated and easy to extend.
+
+
+## CI
+
+This project includes a GitHub Actions workflow at `.github/workflows/android-build.yml` that builds the debug APK with JDK 21 and uploads it as an artifact.
+
+
+## Added in this updated build
+
+- Arabic, English, and German localization with system-follow default and manual override
+- Theme mode: system, light, dark
+- Professional filters: favorites, query, rooms, area, max price, district, source, Jobcenter, Wohngeld, WBS
+- Sync interval selection: manual, 15 min, 30 min, 1 hour, 3 hours
+- Catalog of major Berlin housing sources, with automated sync clearly marked only for supported adapters
