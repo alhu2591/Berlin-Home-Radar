@@ -9,11 +9,10 @@ on:
 
 jobs:
   build:
-    name: Build Debug APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -23,16 +22,16 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@v3
 
-      - name: Build project
-        run: ./gradlew clean build
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
-      - name: Assemble debug APK
-        run: ./gradlew assembleDebug
+      - name: Build
+        run: ./gradlew clean assembleDebug --stacktrace --no-daemon
 
-      - name: Upload debug APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: berlin-home-radar-debug-apk
