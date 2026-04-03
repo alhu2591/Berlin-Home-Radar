@@ -1,0 +1,44 @@
+[
+  {
+    "id": "json-1001",
+    "title": "2-room flat near Tempelhof",
+    "priceEuro": 890,
+    "district": "Neukolln",
+    "location": "Tempelhofer Feld",
+    "rooms": 2.0,
+    "areaSqm": 58.0,
+    "imageUrl": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85",
+    "listingUrl": "https://example.org/listings/json-1001",
+    "jobcenterSuitable": true,
+    "wohngeldEligible": true,
+    "wbsRequired": false
+  },
+  {
+    "id": "json-1002",
+    "title": "Family apartment in Pankow",
+    "priceEuro": 1280,
+    "district": "Pankow",
+    "location": "Prenzlauer Berg border",
+    "rooms": 3.0,
+    "areaSqm": 78.0,
+    "imageUrl": "https://images.unsplash.com/photo-1494526585095-c41746248156",
+    "listingUrl": "https://example.org/listings/json-1002",
+    "jobcenterSuitable": false,
+    "wohngeldEligible": true,
+    "wbsRequired": true
+  },
+  {
+    "id": "json-1003",
+    "title": "Studio in Friedrichshain",
+    "priceEuro": 740,
+    "district": "Friedrichshain",
+    "location": "Boxhagener Platz",
+    "rooms": 1.0,
+    "areaSqm": 36.0,
+    "imageUrl": "https://images.unsplash.com/photo-1484154218962-a197022b5858",
+    "listingUrl": "https://example.org/listings/json-1003",
+    "jobcenterSuitable": true,
+    "wohngeldEligible": true,
+    "wbsRequired": false
+  }
+]
