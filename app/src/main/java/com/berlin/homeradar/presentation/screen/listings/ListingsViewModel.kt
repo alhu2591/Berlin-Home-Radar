@@ -21,6 +21,23 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel لشاشة قائمة الإعلانات الرئيسية.
+ *
+ * ## بنية الـ State:
+ * [uiState] مبني من دمج 5 Flows مختلفة بـ [combine]:
+ * 1. **filters**: الفلاتر الحالية التي اختارها المستخدم (محلي في الـ ViewModel).
+ * 2. **syncInfo**: حالة المزامنة الأخيرة والإعدادات.
+ * 3. **savedSearches**: البحوث المحفوظة للمستخدم.
+ * 4. **filteredListings**: الإعلانات المُصفَّاة (يُعاد جلبها تلقائياً عند تغيير الفلاتر عبر [flatMapLatest]).
+ * 5. **allActiveListings**: جميع الإعلانات النشطة لاشتقاق الأحياء والمصادر المتاحة.
+ *
+ * ## تدفق الفلترة:
+ * `filters` → [flatMapLatest] → استعلام Room جديد → UI يتحدث تلقائياً.
+ * أي تغيير في الفلاتر يُلغي الاستعلام السابق ويُنشئ استعلاماً جديداً فوراً.
+ *
+ * @constructor يُحقن بواسطة Hilt.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ListingsViewModel @Inject constructor(
@@ -32,8 +49,15 @@ class ListingsViewModel @Inject constructor(
     private val saveSearchUseCase: SaveSearchUseCase,
 ) : ViewModel() {
 
+    /** الفلاتر الحالية للمستخدم. تغييرها يُعيد تشغيل استعلام قاعدة البيانات تلقائياً. */
     private val filters = MutableStateFlow(ListingsFilters())
 
+    /**
+     * الحالة الكاملة للشاشة، مُعاد بناؤها تلقائياً عند تغيير أي من المصادر الخمسة.
+     *
+     * [SharingStarted.WhileSubscribed(5_000)]: يحتفظ بالـ Flow نشطاً 5 ثوانٍ بعد توقف المراقبين
+     * لتجنب إعادة التحميل الكاملة عند تدوير الشاشة.
+     */
     val uiState = combine(
         filters,
         observeSyncInfoUseCase(),
@@ -41,8 +65,10 @@ class ListingsViewModel @Inject constructor(
         filters.flatMapLatest { filter -> getListingsUseCase(filter.toPreset()) },
         getListingsUseCase.allActive(),
     ) { filter, syncInfo, savedSearches, filteredListings, allActiveListings ->
+        // اشتقاق قوائم الأحياء والمصادر ديناميكياً من الإعلانات الموجودة
         val availableDistricts = allActiveListings.map { it.district }.distinct().sorted()
         val availableSources = allActiveListings.map { it.source }.distinct().sorted()
+        // حساب عدد التنبيهات النشطة (بحوث محفوظة لها مطابقات حالية)
         val activeAlertsCount = savedSearches.count { saved ->
             saved.alertsEnabled && allActiveListings.any { listing -> listing.matchesFilter(saved.filters) }
         }
@@ -74,21 +100,25 @@ class ListingsViewModel @Inject constructor(
     )
 
     init {
+        // مزامنة تلقائية عند فتح الشاشة للمرة الأولى
         manualRefresh()
     }
 
+    /** يُشغّل مزامنة فورية من واجهة المستخدم (زر التحديث أو Pull-to-Refresh). */
     fun manualRefresh() {
         viewModelScope.launch {
             refreshListingsUseCase("manual")
         }
     }
 
+    /** يعكس حالة المفضلة لإعلان محدد. */
     fun toggleFavorite(listingId: Long) {
         viewModelScope.launch {
             toggleFavoriteUseCase(listingId)
         }
     }
 
+    /** يحفظ الفلاتر الحالية كبحث محفوظ باسم مُحدَّد من المستخدم. */
     fun saveCurrentSearch(name: String) {
         viewModelScope.launch {
             saveSearchUseCase(
@@ -97,9 +127,12 @@ class ListingsViewModel @Inject constructor(
         }
     }
 
+    /** يُطبّق فلاتر بحث محفوظ على الشاشة الحالية. */
     fun applySavedSearch(search: SavedSearch) {
         filters.value = ListingsFilters.fromPreset(search.filters)
     }
+
+    // ── دوال تعديل الفلاتر ─────────────────────────────────────────────────
 
     fun toggleFavoritesOnly() {
         filters.value = filters.value.copy(showFavoritesOnly = !filters.value.showFavoritesOnly)
@@ -125,6 +158,7 @@ class ListingsViewModel @Inject constructor(
         filters.value = filters.value.copy(district = value)
     }
 
+    /** يُضيف مصدراً للمصادر المُختارة أو يُزيله إن كان مُختاراً مسبقاً. */
     fun toggleSource(sourceId: String) {
         val selected = filters.value.selectedSourceIds.toMutableSet()
         if (!selected.add(sourceId)) selected.remove(sourceId)
@@ -143,6 +177,7 @@ class ListingsViewModel @Inject constructor(
         filters.value = filters.value.copy(onlyWbs = !filters.value.onlyWbs)
     }
 
+    /** يُعيد جميع الفلاتر إلى قيمها الافتراضية. */
     fun clearFilters() {
         filters.value = ListingsFilters()
     }

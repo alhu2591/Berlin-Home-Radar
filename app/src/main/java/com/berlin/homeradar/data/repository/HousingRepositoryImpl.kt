@@ -30,6 +30,26 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
+/**
+ * التنفيذ الفعلي لـ [HousingRepository].
+ *
+ * يُجسّد هذا الكلاس طبقة البيانات الكاملة ويُنسّق بين:
+ * - **Room Database**: عبر [HousingListingDao], [SyncStatusDao], [SourceMetricDao].
+ * - **تفضيلات المستخدم**: عبر [UserPreferencesRepository] (DataStore).
+ * - **مصادر الإعلانات**: عبر [ListingSourceRegistry] للوصول للمصادر المفعّلة.
+ * - **سياسة إزالة التكرار**: عبر [DeduplicationPolicy].
+ * - **التتبع والتحليل**: عبر [AnalyticsLogger] و [CrashReporter].
+ *
+ * ## تدفق المزامنة [refreshListings]:
+ * 1. تحديث حالة المزامنة في DB إلى "جارية".
+ * 2. الجلب من كل مصدر مفعّل بشكل تسلسلي مع تسجيل كل نتيجة.
+ * 3. دمج الإعلانات الجديدة مع القديمة عبر [DeduplicationPolicy].
+ * 4. تحديث حالات الإعلانات القديمة (غير المرئية) إلى inactive.
+ * 5. حفظ الكل في DB وتحديث مقاييس كل مصدر.
+ * 6. تحديث حالة المزامنة النهائية في DB.
+ *
+ * @constructor يُحقن بواسطة Hilt كـ Singleton.
+ */
 @Singleton
 class HousingRepositoryImpl @Inject constructor(
     private val housingListingDao: HousingListingDao,
@@ -42,6 +62,15 @@ class HousingRepositoryImpl @Inject constructor(
     private val crashReporter: CrashReporter,
 ) : HousingRepository {
 
+    /**
+     * يراقب الإعلانات النشطة مع تطبيق الفلاتر على مستوى SQL.
+     *
+     * الاستعلام يُنفَّذ في Room مباشرةً للكفاءة، مع تطبيع نص البحث والحي
+     * للتعامل الصحيح مع الأحرف الألمانية.
+     *
+     * **ملاحظة**: [safeSourceIds] دائماً تحتوي على عنصر واحد على الأقل
+     * لتجنب خطأ SQL عند تمرير قائمة فارغة في شرط IN.
+     */
     override fun observeListings(filter: ListingFilterPreset): Flow<List<HousingListing>> {
         val normalizedQuery = deduplicationPolicy.normalize(filter.query)
         val normalizedDistrict = filter.district?.takeIf { it.isNotBlank() }?.let(deduplicationPolicy::normalize)
@@ -67,6 +96,13 @@ class HousingRepositoryImpl @Inject constructor(
     override fun observeSourceReliabilityMetrics(): Flow<Map<String, SourceReliabilityMetrics>> =
         sourceMetricDao.observeAll().map { entities -> entities.associate { it.sourceId to it.toDomain() } }
 
+    /**
+     * يدمج حالة المزامنة من DB مع إعدادات المستخدم من DataStore في Flow واحد.
+     *
+     * يستخدم [combine] لأن البيانات تأتي من مصدرين مختلفين:
+     * - [SyncStatusDao]: آخر مزامنة، هل جارية، رسالة الخطأ.
+     * - [UserPreferencesRepository.appSettings]: الإعدادات الكاملة للمستخدم.
+     */
     override fun observeSyncInfo(): Flow<SyncInfo> {
         return combine(
             syncStatusDao.observe(),
@@ -94,10 +130,24 @@ class HousingRepositoryImpl @Inject constructor(
         housingListingDao.getById(id)?.toDomain()
     }
 
+    /**
+     * يُنفّذ دورة المزامنة الكاملة من كل المصادر المفعّلة.
+     *
+     * ## منطق الفشل الجزئي:
+     * - إذا فشل مصدر واحد أو أكثر لكن نجح غيره → تُكمل المزامنة وتُحفظ رسائل الخطأ.
+     * - إذا فشلت **جميع** المصادر ولم تُجلب أي إعلانات → تُعتبر المزامنة فاشلة كلياً.
+     *
+     * ## إدارة حالة الإعلانات (Lifecycle):
+     * - الإعلانات التي ظهرت في المزامنة الحالية → تُحدَّث/تُدرج كـ ACTIVE.
+     * - الإعلانات القديمة التي لم تظهر من مصادرها الناجحة → تُعلَّم كـ inactive.
+     *
+     * @param trigger سبب المزامنة للتتبع والتحليل ("manual", "workmanager", "startup").
+     */
     override suspend fun refreshListings(trigger: String): Result<Unit> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val currentStatus = syncStatusDao.get() ?: SyncStatusEntity()
 
+        // إشارة بداية المزامنة في قاعدة البيانات
         syncStatusDao.upsert(
             currentStatus.copy(
                 lastAttemptMillis = now,
@@ -114,6 +164,7 @@ class HousingRepositoryImpl @Inject constructor(
             val failedSources = mutableListOf<String>()
             val outcomes = mutableListOf<SourceFetchOutcome>()
 
+            // جلب من كل مصدر بشكل مستقل حتى لا يوقف فشل مصدر واحد البقية
             enabledSources.forEach { source ->
                 val startedAt = System.currentTimeMillis()
                 runCatching { source.fetch() }
@@ -156,10 +207,12 @@ class HousingRepositoryImpl @Inject constructor(
                     }
             }
 
+            // فشل كلي: لا إعلانات وكل المصادر فشلت
             if (collectedListings.isEmpty() && failedSources.isNotEmpty()) {
                 error(failedSources.joinToString(separator = "\n"))
             }
 
+            // دمج الإعلانات الجديدة مع القديمة في قاعدة البيانات
             val existingListings = housingListingDao.getAll()
             val existingMetrics = sourceMetricDao.getAll().associateBy { it.sourceId }
             val entitiesToUpsert = buildMergedEntities(
@@ -168,6 +221,7 @@ class HousingRepositoryImpl @Inject constructor(
                 now = now,
                 deduplicationPolicy = deduplicationPolicy,
             )
+            // تعليم الإعلانات القديمة التي لم تظهر من مصادرها الناجحة كغير نشطة
             val inactiveEntities = buildInactiveEntities(
                 existingListings = existingListings,
                 refreshedEntities = entitiesToUpsert,
@@ -175,6 +229,7 @@ class HousingRepositoryImpl @Inject constructor(
                 now = now,
             )
 
+            // إزالة أي تكرار في القائمة المدمجة قبل الحفظ
             val stagedListings = (entitiesToUpsert + inactiveEntities)
                 .distinctBy { entity -> entity.id.takeIf { it != 0L } ?: "${entity.source}|${entity.externalId}" }
 
@@ -184,6 +239,7 @@ class HousingRepositoryImpl @Inject constructor(
 
             updateSourceMetrics(sourceMetricDao, outcomes, existingMetrics)
 
+            // تسجيل نجاح المزامنة مع الاحتفاظ بأي رسائل خطأ جزئية
             syncStatusDao.upsert(
                 currentStatus.copy(
                     lastAttemptMillis = now,
@@ -204,6 +260,7 @@ class HousingRepositoryImpl @Inject constructor(
                 ),
             )
         }.onFailure { throwable ->
+            // خطأ كلي غير متوقع: تسجيله وتحديث حالة المزامنة
             crashReporter.recordNonFatal(throwable, mapOf("trigger" to trigger))
             analyticsLogger.logEvent(
                 "refresh_failed",
@@ -222,6 +279,8 @@ class HousingRepositoryImpl @Inject constructor(
     override suspend fun toggleFavorite(listingId: Long) {
         housingListingDao.toggleFavorite(listingId)
     }
+
+    // ── تفويض الإعدادات إلى UserPreferencesRepository ──────────────────────
 
     override suspend fun setBackgroundSyncEnabled(enabled: Boolean) = userPreferencesRepository.setBackgroundSyncEnabled(enabled)
     override suspend fun setRemoteSourceEnabled(enabled: Boolean) = userPreferencesRepository.setRemoteSourceEnabled(enabled)

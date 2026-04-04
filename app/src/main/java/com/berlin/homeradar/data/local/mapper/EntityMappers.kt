@@ -8,6 +8,13 @@ import com.berlin.homeradar.domain.model.ListingLifecycleStatus
 import com.berlin.homeradar.domain.model.SourceReliabilityMetrics
 import com.berlin.homeradar.domain.model.SyncInfo
 
+/**
+ * يُحوّل كيان قاعدة البيانات [HousingListingEntity] إلى نموذج الـ Domain [HousingListing].
+ *
+ * يُعيد تحويل [lifecycleStatus] من String المخزَّن إلى Enum عبر [ListingLifecycleStatus.fromStorage].
+ * الحقول المُطبَّعة ([titleNormalized], [districtNormalized], [fingerprint]) لا تنتقل للـ Domain
+ * لأنها تفاصيل داخلية تخص طبقة البيانات فقط.
+ */
 fun HousingListingEntity.toDomain(): HousingListing = HousingListing(
     id = id,
     source = source,
@@ -30,6 +37,11 @@ fun HousingListingEntity.toDomain(): HousingListing = HousingListing(
     lifecycleStatus = ListingLifecycleStatus.fromStorage(lifecycleStatus),
 )
 
+/**
+ * يُحوّل كيان مقاييس المصدر [SourceMetricEntity] إلى نموذج الـ Domain [SourceReliabilityMetrics].
+ *
+ * تحويل مباشر بدون منطق إضافي، الحقول المحسوبة تُعرَّف في [SourceReliabilityMetrics] نفسه.
+ */
 fun SourceMetricEntity.toDomain(): SourceReliabilityMetrics = SourceReliabilityMetrics(
     sourceId = sourceId,
     successCount = successCount,
@@ -43,6 +55,16 @@ fun SourceMetricEntity.toDomain(): SourceReliabilityMetrics = SourceReliabilityM
     lastErrorMessage = lastErrorMessage,
 )
 
+/**
+ * يُحوّل كيان حالة المزامنة [SyncStatusEntity] إلى نموذج [SyncInfo] في الـ Domain.
+ *
+ * يقبل nullable receiver لأن الجدول قد يكون فارغاً (لا مزامنة حدثت بعد).
+ * في هذه الحالة تُستخدم القيم الافتراضية (null timestamps, false للحالات).
+ *
+ * @receiver كيان حالة المزامنة، أو null إن لم تحدث أي مزامنة بعد.
+ * @param backgroundSyncEnabled حالة المزامنة التلقائية من DataStore.
+ * @param remoteSourceEnabled حالة المصدر البعيد من DataStore.
+ */
 fun SyncStatusEntity?.toDomain(
     backgroundSyncEnabled: Boolean,
     remoteSourceEnabled: Boolean,

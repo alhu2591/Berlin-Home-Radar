@@ -18,9 +18,7 @@ complexity:
 style:
   MagicNumber:
     active: false
-  WildcardImport:
-    active: false
-
-formatting:
   StringTemplate:
+    active: false
+  WildcardImport:
     active: false

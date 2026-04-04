@@ -27,6 +27,23 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 
+/**
+ * ViewModel لشاشة الإعدادات وإدارة المصادر.
+ *
+ * ## الإعدادات التي يُدارها:
+ * - المزامنة التلقائية (تفعيل/تعطيل، الفترة الزمنية).
+ * - اللغة والثيم.
+ * - إدارة المصادر (تفعيل، ترتيب، إضافة مخصص، حذف).
+ * - النسخ الاحتياطي (تصدير/استيراد JSON).
+ * - Remote Config (تحديث يدوي).
+ * - اختبار صحة المصادر.
+ *
+ * ## الرسائل ([messages]):
+ * يستخدم [MutableSharedFlow] (لا [StateFlow]) لأن الرسائل أحداث لمرة واحدة (one-shot events)
+ * مثل "تم الحفظ" أو "فشل الاستيراد". [StateFlow] ستُعيد نشر آخر رسالة عند كل تشغيل.
+ *
+ * @constructor يُحقن بواسطة Hilt.
+ */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     observeSyncInfoUseCase: ObserveSyncInfoUseCase,
@@ -38,11 +55,26 @@ class SettingsViewModel @Inject constructor(
     private val repository: HousingRepository,
 ) : ViewModel() {
 
+    /** المصادر المدمجة في التطبيق، مُحمَّلة مرة واحدة (لا تتغير في runtime). */
     private val builtInSources = repository.getKnownSources()
+
+    /** علامة لمنع تشغيل عمليات استيراد متزامنة. */
     private val isImporting = MutableStateFlow(false)
+
+    /** أحداث الرسائل للـ UI (Snackbar/Toast). SharedFlow لأنها أحداث لمرة واحدة. */
     private val _messages = MutableSharedFlow<UiMessage>(extraBufferCapacity = 8)
     val messages = _messages.asSharedFlow()
 
+    /**
+     * الحالة الكاملة لشاشة الإعدادات، تُبنى من دمج 5 مصادر.
+     *
+     * يُدمج [combine] مع:
+     * 1. حالة المزامنة والإعدادات الكاملة.
+     * 2. حالة صحة كل مصدر (IDLE, CHECKING, SUCCESS, FAILED).
+     * 3. مقاييس موثوقية كل مصدر (إحصائيات الجلب).
+     * 4. معلومات Remote Config الحالية.
+     * 5. هل عملية الاستيراد جارية.
+     */
     val uiState = combine(
         observeSyncInfoUseCase(),
         sourceHealthMonitor.statuses,
@@ -77,11 +109,16 @@ class SettingsViewModel @Inject constructor(
     )
 
     init {
+        // تحديث Remote Config عند فتح الإعدادات إن كانت قديمة
         viewModelScope.launch {
             remoteConfigManager.refreshIfStale()
         }
     }
 
+    /**
+     * يُفعّل أو يُعطّل المزامنة التلقائية ويحدّث WorkManager في نفس الوقت.
+     * @param enabled true لتفعيل الجدولة، false لإلغائها.
+     */
     fun onBackgroundSyncChanged(enabled: Boolean) {
         viewModelScope.launch {
             updateSyncSettingsUseCase.setBackgroundSyncEnabled(enabled)
@@ -95,6 +132,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** يغيّر اللغة ويطبّقها فوراً على التطبيق دون الحاجة لإعادة التشغيل. */
     fun onLanguageSelected(language: AppLanguage) {
         viewModelScope.launch {
             updateSyncSettingsUseCase.setAppLanguage(language)
@@ -102,6 +140,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** يغيّر الثيم ويطبّقه فوراً على التطبيق. */
     fun onThemeSelected(themeMode: ThemeMode) {
         viewModelScope.launch {
             updateSyncSettingsUseCase.setThemeMode(themeMode)
@@ -109,6 +148,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** يُحدّث فترة المزامنة ويُعيد جدولة WorkManager بالفترة الجديدة. */
     fun onSyncIntervalSelected(option: SyncIntervalOption) {
         viewModelScope.launch {
             updateSyncSettingsUseCase.setSyncInterval(option)
@@ -160,6 +200,10 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * يُصدّر إعدادات المستخدم كـ JSON ويُمرّرها للـ UI عبر callback.
+     * @param onReady يُستدعى مع نص JSON عند نجاح التصدير.
+     */
     fun exportBackup(onReady: (String) -> Unit) {
         viewModelScope.launch {
             runCatching { updateSyncSettingsUseCase.exportBackupJson() }
@@ -168,6 +212,18 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * يستورد إعدادات من نسخة احتياطية JSON.
+     *
+     * ## خطوات التحقق:
+     * 1. رفض النص الفارغ.
+     * 2. التحقق من وجود المفاتيح الأساسية المطلوبة في JSON.
+     * 3. استيراد البيانات وتطبيق الإعدادات (لغة، ثيم، جدولة) مباشرةً.
+     *
+     * يُمنع تشغيل عمليتين متزامنتين بـ [isImporting].
+     *
+     * @param json نص JSON من نسخة احتياطية سابقة.
+     */
     fun importBackup(json: String) {
         viewModelScope.launch {
             if (isImporting.value) return@launch
@@ -187,6 +243,7 @@ class SettingsViewModel @Inject constructor(
             isImporting.value = true
             val result = updateSyncSettingsUseCase.importBackupJson(trimmed)
             result.onSuccess {
+                // تطبيق الإعدادات الجديدة فوراً بعد الاستيراد الناجح
                 val info = repository.observeSyncInfo().first()
                 appSettingsApplier.applyLanguage(info.appLanguage)
                 appSettingsApplier.applyTheme(info.themeMode)
@@ -203,6 +260,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** يُشغّل مزامنة فورية يدوية ويُعلم المستخدم بالبدء. */
     fun manualRefresh() {
         syncScheduler.manualRefresh()
         viewModelScope.launch {
@@ -210,6 +268,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** يُحدّث Remote Config يدوياً ويُعلم المستخدم بالنتيجة. */
     fun refreshRemoteConfig() {
         viewModelScope.launch {
             remoteConfigManager.refresh()
@@ -218,6 +277,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * يختبر صحة مصدر محدد ويُعلم المستخدم بالنتيجة.
+     *
+     * المصادر التي لا تدعم المزامنة التلقائية تُعطي رسالة خاصة بدلاً من الاختبار.
+     *
+     * @param sourceId معرّف المصدر المراد اختباره.
+     */
     fun testSource(sourceId: String) {
         viewModelScope.launch {
             val source = uiState.value.sources.firstOrNull { it.id == sourceId } ?: return@launch
@@ -236,11 +302,25 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * يتحقق إذا كان النص JSON يشبه نسخة احتياطية صالحة بفحص المفاتيح الأساسية.
+     *
+     * هذا فحص سريع أولي لا يضمن صحة البيانات كاملاً، لكنه يُقلّل محاولات الاستيراد الفاشلة.
+     *
+     * @param raw النص المراد فحصه.
+     * @return true إذا احتوى على جميع [REQUIRED_BACKUP_KEYS].
+     */
     private fun isLikelyBackupJson(raw: String): Boolean {
         val jsonObject = runCatching { Json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return false
         return REQUIRED_BACKUP_KEYS.all { key -> key in jsonObject }
     }
 
+    /**
+     * يدمج المصادر المدمجة والمخصصة بحسب ترتيب المستخدم.
+     *
+     * يستخدم (sourceOrder + all.keys) ثم [distinct] لضمان ظهور المصادر الجديدة
+     * غير المرتّبة في نهاية القائمة.
+     */
     private fun mergeSources(
         builtInSources: List<SourceDefinition>,
         customSources: List<SourceDefinition>,
@@ -251,6 +331,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     companion object {
+        /**
+         * المفاتيح الأساسية المطلوبة في ملف النسخة الاحتياطية.
+         * يُستخدم في [isLikelyBackupJson] للتحقق السريع من صلاحية الملف.
+         */
         private val REQUIRED_BACKUP_KEYS = setOf(
             "backgroundSyncEnabled",
             "remoteSourceEnabled",

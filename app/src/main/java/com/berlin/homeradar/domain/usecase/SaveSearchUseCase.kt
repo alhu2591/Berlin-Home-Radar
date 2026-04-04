@@ -4,6 +4,11 @@ import com.berlin.homeradar.domain.model.SavedSearch
 import com.berlin.homeradar.domain.repository.HousingRepository
 import javax.inject.Inject
 
+/**
+ * Use case لحفظ بحث جديد أو تحديث بحث موجود.
+ *
+ * @param search كائن البحث المراد حفظه (يحتوي على اسم وفلاتر وإعداد التنبيهات).
+ */
 class SaveSearchUseCase @Inject constructor(private val repository: HousingRepository) {
     suspend operator fun invoke(search: SavedSearch) = repository.saveSearch(search)
 }

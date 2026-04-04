@@ -29,10 +29,33 @@ import retrofit2.Retrofit
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import javax.inject.Singleton
 
+/**
+ * وحدة Hilt الرئيسية لتوفير (Provide) التبعيات المشتركة على مستوى التطبيق.
+ *
+ * مُثبَّتة في [SingletonComponent] أي أن جميع ما توفّره حياته مرتبطة بحياة التطبيق.
+ *
+ * ## ما توفّره:
+ * - **قاعدة البيانات** ([AppDatabase]) وجميع الـ DAOs.
+ * - **WorkManager** مُهيَّأ مع ApplicationContext.
+ * - **Json** (Kotlinx Serialization) مع `ignoreUnknownKeys`.
+ * - **OkHttpClient** مع timeouts مناسبة وـ User-Agent ثابت.
+ * - **Retrofit** مُهيَّأ لجلب الإعلانات البعيدة.
+ *
+ * @see AppBindsModule للـ bindings التجريدية (interface → implementation).
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object AppProvidesModule {
 
+    /**
+     * يُوفّر قاعدة البيانات الرئيسية للتطبيق.
+     *
+     * تشمل [MIGRATION_1_3] ترقية الجدول لإضافة:
+     * - `lastSeenAtEpochMillis`, `isActive`, `lifecycleStatus` لإدارة دورة حياة الإعلانات.
+     * - جدول `source_metric` جديد لتتبع أداء كل مصدر.
+     *
+     * **ملاحظة**: الهجرة تنتقل مباشرة من الإصدار 1 إلى 3 (تجاوز 2) لدمج هجرتين سابقتين.
+     */
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -45,23 +68,39 @@ object AppProvidesModule {
             .build()
     }
 
+    /** يُوفّر [HousingListingDao] من قاعدة البيانات المُحقنة. */
     @Provides
     fun provideHousingListingDao(database: AppDatabase): HousingListingDao = database.housingListingDao()
 
+    /** يُوفّر [SyncStatusDao] من قاعدة البيانات المُحقنة. */
     @Provides
     fun provideSyncStatusDao(database: AppDatabase): SyncStatusDao = database.syncStatusDao()
 
+    /** يُوفّر [SourceMetricDao] من قاعدة البيانات المُحقنة. */
     @Provides
     fun provideSourceMetricDao(database: AppDatabase): SourceMetricDao = database.sourceMetricDao()
 
+    /** يُوفّر WorkManager Singleton مُهيَّأ بالـ ApplicationContext. */
     @Provides
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager = WorkManager.getInstance(context)
 
+    /**
+     * يُوفّر مُشغّل JSON مُهيَّأ مع [ignoreUnknownKeys] = true
+     * للتسامح مع حقول جديدة قد يُضيفها API في المستقبل بدون كسر التطبيق.
+     */
     @Provides
     @Singleton
     fun provideJson(): Json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * يُوفّر [OkHttpClient] مُهيَّأ لطلبات الشبكة.
+     *
+     * الإعدادات:
+     * - `retryOnConnectionFailure`: إعادة المحاولة تلقائياً عند انقطاع الاتصال.
+     * - Timeouts: 20 ثانية للاتصال، 30 ثانية للقراءة والإرسال.
+     * - User-Agent ثابت لتعريف التطبيق للمواقع.
+     */
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
@@ -77,6 +116,11 @@ object AppProvidesModule {
         }
         .build()
 
+    /**
+     * يُوفّر [Retrofit] مُهيَّأ للتواصل مع Remote Listings API.
+     *
+     * **ملاحظة**: [baseUrl] placeholder فقط، العنوان الفعلي يُحدَّد عبر Remote Config.
+     */
     @Provides
     @Singleton
     fun provideRetrofit(json: Json, okHttpClient: OkHttpClient): Retrofit {
@@ -87,12 +131,22 @@ object AppProvidesModule {
             .build()
     }
 
+    /** يُوفّر [RemoteListingsService] من Retrofit المُحقن. */
     @Provides
     @Singleton
     fun provideRemoteListingsService(retrofit: Retrofit): RemoteListingsService {
         return retrofit.create(RemoteListingsService::class.java)
     }
 
+    /**
+     * هجرة قاعدة البيانات من الإصدار 1 إلى 3.
+     *
+     * ## التغييرات:
+     * - إضافة `lastSeenAtEpochMillis` لتتبع آخر ظهور للإعلان في المزامنة.
+     * - إضافة `isActive` و `lifecycleStatus` لإدارة الإعلانات المنتهية.
+     * - إنشاء فهارس لـ `isActive` و `lifecycleStatus` لأداء استعلامات أفضل.
+     * - إنشاء جدول `source_metric` جديد لتتبع أداء كل مصدر عبر الزمن.
+     */
     private val MIGRATION_1_3 = object : Migration(1, 3) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE housing_listing ADD COLUMN lastSeenAtEpochMillis INTEGER NOT NULL DEFAULT 0")
@@ -121,15 +175,25 @@ object AppProvidesModule {
     }
 }
 
+/**
+ * وحدة Hilt لربط الـ interfaces بتنفيذاتها عبر [@Binds].
+ *
+ * يُفضَّل [@Binds] على [@Provides] للـ bindings لأنه لا ينشئ كائناً جديداً،
+ * بل يُخبر Hilt فقط أن [HousingRepositoryImpl] هو التنفيذ لـ [HousingRepository].
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AppBindsModule {
+
+    /** يربط [HousingRepositoryImpl] كتنفيذ لـ [HousingRepository]. */
     @Binds
     abstract fun bindHousingRepository(impl: HousingRepositoryImpl): HousingRepository
 
+    /** يربط [NetworkAnalyticsLogger] كتنفيذ لـ [AnalyticsLogger]. */
     @Binds
     abstract fun bindAnalyticsLogger(impl: NetworkAnalyticsLogger): AnalyticsLogger
 
+    /** يربط [NetworkCrashReporter] كتنفيذ لـ [CrashReporter]. */
     @Binds
     abstract fun bindCrashReporter(impl: NetworkCrashReporter): CrashReporter
 }
