@@ -1,0 +1,26 @@
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -153,6 +153,9 @@
+     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+     debugImplementation("androidx.compose.ui:ui-test-manifest")
+ 
++
++    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.6")
++
+ }
+ 
+ detekt {
+--- a/config/detekt/detekt.yml
++++ b/config/detekt/detekt.yml
+@@ -18,7 +18,9 @@
+ style:
+   MagicNumber:
+     active: false
++  WildcardImport:
++    active: false
++
++formatting:
+   StringTemplate:
+     active: false
+-  WildcardImport:
+-    active: false
