@@ -89,3 +89,12 @@ This project includes a GitHub Actions workflow at `.github/workflows/android-bu
 
 This project does **not** force Firebase so the repository continues to build without a `google-services.json` file.
 If you want real production crash reporting and analytics, wire the telemetry interfaces to Firebase Crashlytics and Analytics after adding Firebase configuration for your app. Firebase's official Android setup requires adding Firebase to the project and then adding the Crashlytics SDK and, for breadcrumb logs, enabling Analytics. citeturn459038search0turn459038search8
+
+
+## Android 16 compatibility
+
+- AGP 8.10.1
+- Gradle 8.11.1
+- compileSdk 36
+- targetSdk 36
+- CI installs Android SDK Platform 36 and Build Tools 36.0.0

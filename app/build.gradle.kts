@@ -9,12 +9,13 @@ plugins {
 
 android {
     namespace = "com.berlin.homeradar"
-    compileSdk = 34
+    // Android 16 / API 36 compatibility
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.berlin.homeradar"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
 
