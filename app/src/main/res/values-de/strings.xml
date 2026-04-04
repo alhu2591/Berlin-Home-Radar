@@ -132,7 +132,7 @@
     <string name="onboarding_title">Willkommen bei Berlin Home Radar</string>
     <string name="onboarding_body_one">Beobachte Wohnungsangebote aus mehreren Berliner Quellen, speichere Suchanfragen und erhalte lokale Hinweise bei neuen Treffern.</string>
     <string name="onboarding_body_two">Nutze Filter, Quellenverwaltung, Sprachwahl und Design-Einstellungen, um die App an deine Bedürfnisse anzupassen.</string>
-    <string name="onboarding_get_started">Los geht's</string>
+    <string name="onboarding_get_started">Jetzt starten</string>
 
     <string name="notification_channel_name">Benachrichtigungen für gespeicherte Suchen</string>
     <string name="notification_channel_description">Lokale Hinweise, wenn gespeicherte Suchen neue Berliner Angebote finden.</string>
