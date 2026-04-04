@@ -44,7 +44,7 @@ jobs:
         run: ./gradlew clean assembleRelease bundleRelease --stacktrace --no-daemon
 
       - name: Upload release outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: berlin-home-radar-release
           path: |
