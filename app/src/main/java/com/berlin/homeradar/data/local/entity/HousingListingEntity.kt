@@ -9,6 +9,8 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["source", "externalId"], unique = true),
         Index(value = ["fingerprint"], unique = false),
+        Index(value = ["isActive"]),
+        Index(value = ["lifecycleStatus"]),
     ],
 )
 data class HousingListingEntity(
@@ -31,4 +33,7 @@ data class HousingListingEntity(
     val isFavorite: Boolean = false,
     val fingerprint: String,
     val updatedAtEpochMillis: Long,
+    val lastSeenAtEpochMillis: Long = updatedAtEpochMillis,
+    val isActive: Boolean = true,
+    val lifecycleStatus: String = "active",
 )

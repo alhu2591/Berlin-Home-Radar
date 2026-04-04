@@ -2,7 +2,6 @@ package com.berlin.homeradar.presentation.screen.listings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.berlin.homeradar.domain.model.HousingListing
 import com.berlin.homeradar.domain.model.ListingFilterPreset
 import com.berlin.homeradar.domain.model.SavedSearch
 import com.berlin.homeradar.domain.usecase.GetListingsUseCase
@@ -39,19 +38,13 @@ class ListingsViewModel @Inject constructor(
         filters,
         observeSyncInfoUseCase(),
         observeSavedSearchesUseCase(),
-        filters.flatMapLatest { filter ->
-            getListingsUseCase(
-                onlyFavorites = filter.showFavoritesOnly,
-                minRooms = null,
-                district = null,
-            )
-        },
-    ) { filter, syncInfo, savedSearches, listings ->
-        val availableDistricts = listings.map { it.district }.distinct().sorted()
-        val availableSources = listings.map { it.source }.distinct().sorted()
-        val filteredListings = listings.filter { it.matches(filter) }
+        filters.flatMapLatest { filter -> getListingsUseCase(filter.toPreset()) },
+        getListingsUseCase.allActive(),
+    ) { filter, syncInfo, savedSearches, filteredListings, allActiveListings ->
+        val availableDistricts = allActiveListings.map { it.district }.distinct().sorted()
+        val availableSources = allActiveListings.map { it.source }.distinct().sorted()
         val activeAlertsCount = savedSearches.count { saved ->
-            saved.alertsEnabled && listings.any { it.matches(saved.filters) }
+            saved.alertsEnabled && allActiveListings.any { listing -> listing.matchesFilter(saved.filters) }
         }
         ListingsUiState(
             listings = filteredListings,
@@ -71,7 +64,8 @@ class ListingsViewModel @Inject constructor(
             savedSearches = savedSearches,
             activeAlertsCount = activeAlertsCount,
             isRefreshing = syncInfo.isSyncing,
-            message = syncInfo.lastErrorMessage,
+            hasActiveFilters = filter.hasActiveCriteria(),
+            syncIssueMessage = syncInfo.lastErrorMessage?.takeIf { it.isNotBlank() },
         )
     }.stateIn(
         viewModelScope,
@@ -107,80 +101,49 @@ class ListingsViewModel @Inject constructor(
         filters.value = ListingsFilters.fromPreset(search.filters)
     }
 
-    fun toggleFavoritesOnly() { filters.value = filters.value.copy(showFavoritesOnly = !filters.value.showFavoritesOnly) }
-    fun setQuery(value: String) { filters.value = filters.value.copy(query = value) }
-    fun setMinRooms(value: Double?) { filters.value = filters.value.copy(minRooms = value) }
-    fun setMinArea(value: Double?) { filters.value = filters.value.copy(minArea = value) }
-    fun setMaxPrice(value: Int?) { filters.value = filters.value.copy(maxPrice = value) }
-    fun setDistrict(value: String?) { filters.value = filters.value.copy(district = value) }
-    fun toggleJobcenterFilter() { filters.value = filters.value.copy(onlyJobcenter = !filters.value.onlyJobcenter) }
-    fun toggleWohngeldFilter() { filters.value = filters.value.copy(onlyWohngeld = !filters.value.onlyWohngeld) }
-    fun toggleWbsFilter() { filters.value = filters.value.copy(onlyWbs = !filters.value.onlyWbs) }
+    fun toggleFavoritesOnly() {
+        filters.value = filters.value.copy(showFavoritesOnly = !filters.value.showFavoritesOnly)
+    }
+
+    fun setQuery(value: String) {
+        filters.value = filters.value.copy(query = value)
+    }
+
+    fun setMinRooms(value: Double?) {
+        filters.value = filters.value.copy(minRooms = value)
+    }
+
+    fun setMinArea(value: Double?) {
+        filters.value = filters.value.copy(minArea = value)
+    }
+
+    fun setMaxPrice(value: Int?) {
+        filters.value = filters.value.copy(maxPrice = value)
+    }
+
+    fun setDistrict(value: String?) {
+        filters.value = filters.value.copy(district = value)
+    }
+
     fun toggleSource(sourceId: String) {
-        filters.value = filters.value.copy(
-            selectedSourceIds = filters.value.selectedSourceIds.toMutableSet().apply { if (!add(sourceId)) remove(sourceId) }
-        )
+        val selected = filters.value.selectedSourceIds.toMutableSet()
+        if (!selected.add(sourceId)) selected.remove(sourceId)
+        filters.value = filters.value.copy(selectedSourceIds = selected)
     }
-    fun clearFilters() { filters.value = ListingsFilters(showFavoritesOnly = filters.value.showFavoritesOnly) }
-}
 
-data class ListingsFilters(
-    val showFavoritesOnly: Boolean = false,
-    val query: String = "",
-    val minRooms: Double? = null,
-    val minArea: Double? = null,
-    val maxPrice: Int? = null,
-    val district: String? = null,
-    val selectedSourceIds: Set<String> = emptySet(),
-    val onlyJobcenter: Boolean = false,
-    val onlyWohngeld: Boolean = false,
-    val onlyWbs: Boolean = false,
-) {
-    fun toPreset(): ListingFilterPreset = ListingFilterPreset(
-        query = query,
-        minRooms = minRooms,
-        minArea = minArea,
-        maxPrice = maxPrice,
-        district = district,
-        selectedSourceIds = selectedSourceIds,
-        onlyJobcenter = onlyJobcenter,
-        onlyWohngeld = onlyWohngeld,
-        onlyWbs = onlyWbs,
-        showFavoritesOnly = showFavoritesOnly,
-    )
-
-    companion object {
-        fun fromPreset(preset: ListingFilterPreset): ListingsFilters = ListingsFilters(
-            showFavoritesOnly = preset.showFavoritesOnly,
-            query = preset.query,
-            minRooms = preset.minRooms,
-            minArea = preset.minArea,
-            maxPrice = preset.maxPrice,
-            district = preset.district,
-            selectedSourceIds = preset.selectedSourceIds,
-            onlyJobcenter = preset.onlyJobcenter,
-            onlyWohngeld = preset.onlyWohngeld,
-            onlyWbs = preset.onlyWbs,
-        )
+    fun toggleJobcenterFilter() {
+        filters.value = filters.value.copy(onlyJobcenter = !filters.value.onlyJobcenter)
     }
-}
 
-fun HousingListing.matches(filter: ListingsFilters): Boolean = matches(filter.toPreset())
+    fun toggleWohngeldFilter() {
+        filters.value = filters.value.copy(onlyWohngeld = !filters.value.onlyWohngeld)
+    }
 
-fun HousingListing.matches(filter: ListingFilterPreset): Boolean {
-    val matchesQuery = filter.query.isBlank() || buildString {
-        append(title); append(' '); append(location); append(' '); append(district); append(' '); append(source)
-    }.contains(filter.query, ignoreCase = true)
-    val matchesRooms = filter.minRooms == null || rooms >= filter.minRooms
-    val matchesArea = filter.minArea == null || areaSqm >= filter.minArea
-    val matchesPrice = filter.maxPrice == null || priceEuro <= filter.maxPrice
-    val matchesDistrict = filter.district.isNullOrBlank() || district.equals(filter.district, ignoreCase = true)
-    val matchesSource = filter.selectedSourceIds.isEmpty() || source in filter.selectedSourceIds
-    val matchesJobcenter = !filter.onlyJobcenter || isJobcenterSuitable
-    val matchesWohngeld = !filter.onlyWohngeld || isWohngeldEligible
-    val matchesWbs = !filter.onlyWbs || isWbsRequired
-    val matchesFavorites = !filter.showFavoritesOnly || isFavorite
-    return matchesQuery && matchesRooms && matchesArea && matchesPrice &&
-        matchesDistrict && matchesSource && matchesJobcenter &&
-        matchesWohngeld && matchesWbs && matchesFavorites
+    fun toggleWbsFilter() {
+        filters.value = filters.value.copy(onlyWbs = !filters.value.onlyWbs)
+    }
+
+    fun clearFilters() {
+        filters.value = ListingsFilters()
+    }
 }

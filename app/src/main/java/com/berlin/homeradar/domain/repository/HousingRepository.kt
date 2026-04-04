@@ -2,19 +2,19 @@ package com.berlin.homeradar.domain.repository
 
 import com.berlin.homeradar.domain.model.AppLanguage
 import com.berlin.homeradar.domain.model.HousingListing
+import com.berlin.homeradar.domain.model.ListingFilterPreset
 import com.berlin.homeradar.domain.model.SavedSearch
 import com.berlin.homeradar.domain.model.SourceDefinition
+import com.berlin.homeradar.domain.model.SourceReliabilityMetrics
 import com.berlin.homeradar.domain.model.SyncInfo
 import com.berlin.homeradar.domain.model.SyncIntervalOption
 import com.berlin.homeradar.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 
 interface HousingRepository {
-    fun observeListings(
-        onlyFavorites: Boolean = false,
-        minRooms: Double? = null,
-        district: String? = null,
-    ): Flow<List<HousingListing>>
+    fun observeListings(filter: ListingFilterPreset = ListingFilterPreset()): Flow<List<HousingListing>>
+    fun observeAllActiveListings(): Flow<List<HousingListing>>
+    fun observeSourceReliabilityMetrics(): Flow<Map<String, SourceReliabilityMetrics>>
 
     fun observeSyncInfo(): Flow<SyncInfo>
     fun observeSavedSearches(): Flow<List<SavedSearch>>

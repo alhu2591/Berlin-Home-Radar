@@ -1,5 +1,6 @@
 package com.berlin.homeradar.data.source
 
+import com.berlin.homeradar.data.message.UserFacingMessages
 import com.berlin.homeradar.domain.model.SourceDefinition
 import com.berlin.homeradar.domain.model.SourceHealth
 import com.berlin.homeradar.domain.model.SourceHealthStatus
@@ -24,20 +25,20 @@ class SourceHealthMonitor @Inject constructor(
                 sourceId = sourceId,
                 status = if (definition.sourceType == SourceType.CATALOG) SourceHealthStatus.UNSUPPORTED else SourceHealthStatus.IDLE,
                 message = when (definition.sourceType) {
-                    SourceType.WEBVIEW -> "WebView-assisted source. Open externally or add a dedicated adapter later."
-                    SourceType.HTML -> "Catalog-only HTML source. Add adapter before automated sync."
-                    SourceType.API -> "API source metadata only. Provide adapter or endpoint."
-                    SourceType.CATALOG -> "Catalog source only."
+                    SourceType.WEBVIEW -> UserFacingMessages.SOURCE_WEBVIEW
+                    SourceType.HTML -> UserFacingMessages.SOURCE_HTML_CATALOG
+                    SourceType.API -> UserFacingMessages.SOURCE_API_METADATA
+                    SourceType.CATALOG -> UserFacingMessages.SOURCE_CATALOG_ONLY
                 },
             )
             return Result.success(Unit)
         }
 
-        update(sourceId, SourceHealthStatus.CHECKING, "Testing source adapter…")
-        val result = registry.adapterFor(definition)?.healthCheck() ?: Result.failure(IllegalStateException("Adapter missing"))
+        update(sourceId, SourceHealthStatus.CHECKING, UserFacingMessages.SOURCE_TESTING)
+        val result = registry.adapterFor(definition)?.healthCheck() ?: Result.failure(IllegalStateException(UserFacingMessages.SOURCE_ADAPTER_MISSING))
         result
-            .onSuccess { update(sourceId, SourceHealthStatus.SUCCESS, "Source adapter is healthy.") }
-            .onFailure { update(sourceId, SourceHealthStatus.FAILED, it.message ?: "Source test failed") }
+            .onSuccess { update(sourceId, SourceHealthStatus.SUCCESS, UserFacingMessages.SOURCE_ADAPTER_HEALTHY) }
+            .onFailure { update(sourceId, SourceHealthStatus.FAILED, it.message ?: UserFacingMessages.SOURCE_TEST_FAILED) }
         return result
     }
 

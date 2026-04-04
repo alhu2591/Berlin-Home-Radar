@@ -17,4 +17,7 @@ data class HousingListing(
     val isWbsRequired: Boolean,
     val isFavorite: Boolean,
     val updatedAtEpochMillis: Long,
+    val lastSeenAtEpochMillis: Long = updatedAtEpochMillis,
+    val isActive: Boolean = true,
+    val lifecycleStatus: ListingLifecycleStatus = ListingLifecycleStatus.ACTIVE,
 )

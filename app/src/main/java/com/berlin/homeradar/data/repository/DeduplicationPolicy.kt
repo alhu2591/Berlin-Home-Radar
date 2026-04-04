@@ -2,6 +2,7 @@ package com.berlin.homeradar.data.repository
 
 import com.berlin.homeradar.data.local.entity.HousingListingEntity
 import com.berlin.homeradar.data.source.model.RawListing
+import com.berlin.homeradar.domain.model.ListingLifecycleStatus
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,7 +22,7 @@ class DeduplicationPolicy @Inject constructor() {
     fun normalize(value: String): String = value
         .trim()
         .lowercase(Locale.GERMANY)
-        .replace(Regex("\\s+"), " ")
+        .replace(Regex("\s+"), " ")
 
     fun merge(existing: HousingListingEntity, incoming: RawListing, now: Long): HousingListingEntity {
         return existing.copy(
@@ -40,6 +41,9 @@ class DeduplicationPolicy @Inject constructor() {
             isWbsRequired = incoming.isWbsRequired,
             fingerprint = fingerprint(incoming),
             updatedAtEpochMillis = now,
+            lastSeenAtEpochMillis = now,
+            isActive = true,
+            lifecycleStatus = ListingLifecycleStatus.ACTIVE.storageValue,
         )
     }
 
@@ -64,6 +68,9 @@ class DeduplicationPolicy @Inject constructor() {
             isFavorite = isFavorite,
             fingerprint = fingerprint(raw),
             updatedAtEpochMillis = now,
+            lastSeenAtEpochMillis = now,
+            isActive = true,
+            lifecycleStatus = ListingLifecycleStatus.ACTIVE.storageValue,
         )
     }
 }

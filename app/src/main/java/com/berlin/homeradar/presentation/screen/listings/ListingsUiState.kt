@@ -22,5 +22,6 @@ data class ListingsUiState(
     val savedSearches: List<SavedSearch> = emptyList(),
     val activeAlertsCount: Int = 0,
     val isRefreshing: Boolean = false,
-    val message: String? = null,
+    val hasActiveFilters: Boolean = false,
+    val syncIssueMessage: String? = null,
 )

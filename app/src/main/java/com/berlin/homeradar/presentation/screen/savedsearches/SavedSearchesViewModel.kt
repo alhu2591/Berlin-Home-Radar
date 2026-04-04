@@ -40,6 +40,6 @@ class SavedSearchesViewModel @Inject constructor(
 
     companion object {
         fun newSearch(name: String, filters: ListingFilterPreset): SavedSearch =
-            SavedSearch(UUID.randomUUID().toString(), name, filters, alertsEnabled = true)
+            SavedSearch(UUID.randomUUID().toString(), name, filters, alertsEnabled = false)
     }
 }

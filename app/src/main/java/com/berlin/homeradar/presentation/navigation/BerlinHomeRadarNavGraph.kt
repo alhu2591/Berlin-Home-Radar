@@ -13,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -34,13 +35,12 @@ import com.berlin.homeradar.presentation.screen.settings.SettingsRoute
 import com.berlin.homeradar.presentation.screen.settings.SourceManagerRoute
 import com.berlin.homeradar.presentation.screen.onboarding.OnboardingViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.runtime.collectAsState
 
 @Composable
 fun BerlinHomeRadarNavGraph() {
     val navController = rememberNavController()
     val onboardingViewModel: OnboardingViewModel = hiltViewModel()
-    val onboardingCompleted by onboardingViewModel.completed.collectAsState()
+    val onboardingCompleted by onboardingViewModel.completed.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val items = listOf(Screen.Listings, Screen.Settings)
 
@@ -65,7 +65,10 @@ fun BerlinHomeRadarNavGraph() {
                                     Screen.Listings -> Icons.Outlined.Home
                                     else -> Icons.Outlined.Settings
                                 },
-                                contentDescription = screen.route,
+                                contentDescription = when (screen) {
+                                    Screen.Listings -> stringResource(R.string.nav_listings)
+                                    else -> stringResource(R.string.nav_settings)
+                                },
                             )
                         },
                         label = {

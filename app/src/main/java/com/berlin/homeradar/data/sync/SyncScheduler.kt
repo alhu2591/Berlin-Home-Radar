@@ -7,14 +7,11 @@ import androidx.work.Operation
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.berlin.homeradar.data.preferences.UserPreferencesRepository
+import com.berlin.homeradar.domain.model.AppSettings
 import com.berlin.homeradar.domain.model.SyncIntervalOption
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 @Singleton
 class SyncScheduler @Inject constructor(
@@ -22,14 +19,21 @@ class SyncScheduler @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
 ) {
 
-    fun ensurePeriodicSync() {
-        CoroutineScope(Dispatchers.Default).launch {
-            val settings = userPreferencesRepository.appSettings.first()
-            if (settings.backgroundSyncEnabled) {
-                schedulePeriodicSync(settings.syncInterval)
-            } else {
-                cancelPeriodicSync()
-            }
+    suspend fun restoreSchedulingFromSettings() {
+        applySettings(userPreferencesRepository.appSettingsSnapshot())
+    }
+
+    suspend fun currentSettings(): AppSettings = userPreferencesRepository.appSettingsSnapshot()
+
+    internal suspend fun applyStoredSettings() {
+        restoreSchedulingFromSettings()
+    }
+
+    internal fun applySettings(settings: AppSettings) {
+        if (settings.backgroundSyncEnabled) {
+            schedulePeriodicSync(settings.syncInterval)
+        } else {
+            cancelPeriodicSync()
         }
     }
 
@@ -43,9 +47,7 @@ class SyncScheduler @Inject constructor(
             repeatInterval = interval.minutes,
             repeatIntervalTimeUnit = TimeUnit.MINUTES,
         )
-            .setConstraints(
-                Constraints.Builder().build()
-            )
+            .setConstraints(Constraints.Builder().build())
             .build()
 
         workManager.enqueueUniquePeriodicWork(

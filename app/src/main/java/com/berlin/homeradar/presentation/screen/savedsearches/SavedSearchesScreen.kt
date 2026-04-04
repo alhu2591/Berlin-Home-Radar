@@ -15,33 +15,43 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.berlin.homeradar.R
 import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedSearchesScreen(
     uiState: StateFlow<SavedSearchesUiState>,
+    snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onDeleteSearch: (String) -> Unit,
     onAlertEnabledChanged: (String, Boolean) -> Unit,
 ) {
-    val state by uiState.collectAsState()
+    val state by uiState.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Saved searches & local alerts") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null) } },
+                title = { Text(stringResource(R.string.saved_searches_screen_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.navigate_back))
+                    }
+                },
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -52,7 +62,9 @@ fun SavedSearchesScreen(
                 Card {
                     ListItem(
                         headlineContent = { Text(search.name) },
-                        supportingContent = { Text("Alerts are local only and evaluated on refresh inside the app.") },
+                        supportingContent = {
+                            Text(stringResource(R.string.saved_searches_alerts_setup_desc))
+                        },
                         trailingContent = {
                             Switch(
                                 checked = search.alertsEnabled,
@@ -60,8 +72,13 @@ fun SavedSearchesScreen(
                             )
                         }
                     )
-                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        TextButton(onClick = { onDeleteSearch(search.id) }) { Text("Delete") }
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        TextButton(onClick = { onDeleteSearch(search.id) }) {
+                            Text(stringResource(R.string.delete_label))
+                        }
                     }
                 }
             }

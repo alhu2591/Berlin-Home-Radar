@@ -1,5 +1,6 @@
 package com.berlin.homeradar.data.source
 
+import com.berlin.homeradar.data.config.FeatureFlags
 import com.berlin.homeradar.data.preferences.UserPreferencesRepository
 import com.berlin.homeradar.domain.model.SourceDefinition
 import javax.inject.Inject
@@ -32,10 +33,12 @@ class ListingSourceRegistry @Inject constructor(
                 adapterFor(definition)
             }
             .filter { source -> source.sourceId in settings.enabledSourceIds }
+            .filter { source -> FeatureFlags.isSourceEnabled(source.sourceId) }
     }
 
     fun adapterFor(definition: SourceDefinition?): ListingSource? {
         definition ?: return null
+        if (!FeatureFlags.isSourceEnabled(definition.id)) return null
         return builtInSources[definition.id]
             ?: if (definition.isUserAdded || definition.supportsAutomatedSync) {
                 CustomConfiguredListingSource(definition, okHttpClient)
