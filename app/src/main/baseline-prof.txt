@@ -1,7 +1,0 @@
-HSPLcom/berlin/homeradar/BerlinHomeRadarApp;
-HSPLcom/berlin/homeradar/MainActivity;
-HSPLcom/berlin/homeradar/presentation/navigation/BerlinHomeRadarNavGraph;
-HSPLcom/berlin/homeradar/presentation/screen/listings/ListingsScreenKt;
-HSPLcom/berlin/homeradar/presentation/screen/listings/ListingsComponentsKt;
-HSPLcom/berlin/homeradar/presentation/screen/details/ListingDetailsScreenKt;
-HSPLcom/berlin/homeradar/presentation/screen/settings/SettingsScreenKt;

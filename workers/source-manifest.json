@@ -1,0 +1,224 @@
+{
+  "version": "1.9.0",
+  "market": "Berlin",
+  "sources": [
+    {
+      "adapterId": "immoscout-de",
+      "label": "ImmobilienScout24",
+      "strategies": [
+        "auto",
+        "official_api",
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.immobilienscout24.de/Suche/de/berlin/berlin/wohnung-mieten"
+    },
+    {
+      "adapterId": "immowelt-de",
+      "label": "Immowelt",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.immowelt.de/suche/mieten/wohnung/berlin/berlin-10115/ad08de8634"
+    },
+    {
+      "adapterId": "immonet-de",
+      "label": "Immonet",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.immonet.de/berlin/wohnung-mieten.html"
+    },
+    {
+      "adapterId": "wg-gesucht-de",
+      "label": "WG-Gesucht",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "modes": [
+        "rooms",
+        "apartments",
+        "both"
+      ]
+    },
+    {
+      "adapterId": "ebay-kleinanzeigen-de",
+      "label": "Kleinanzeigen",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.kleinanzeigen.de/s-wohnungmieten/berlin/c203l3331"
+    },
+    {
+      "adapterId": "wohnungsboerse-de",
+      "label": "Wohnungsboerse",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.wohnungsboerse.net/Berlin/mieten/wohnungen"
+    },
+    {
+      "adapterId": "inberlinwohnen-de",
+      "label": "inberlinwohnen",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://inberlinwohnen.de/wohnungsfinder/"
+    },
+    {
+      "adapterId": "degewo-de",
+      "label": "degewo",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.degewo.de/immosuche/"
+    },
+    {
+      "adapterId": "gesobau-de",
+      "label": "GESOBAU",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.gesobau.de/mieten/wohnungssuche/"
+    },
+    {
+      "adapterId": "howoge-de",
+      "label": "HOWOGE",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.howoge.de/immobiliensuche/wohnungssuche.html"
+    },
+    {
+      "adapterId": "stadtundland-de",
+      "label": "STADT UND LAND",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://stadtundland.de/wohnungssuche"
+    },
+    {
+      "adapterId": "wbm-de",
+      "label": "WBM",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.wbm.de/wohnungen-berlin/angebote/"
+    },
+    {
+      "adapterId": "gewobag-de",
+      "label": "Gewobag",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.gewobag.de/fuer-mietinteressentinnen/wohnungssuche/"
+    },
+    {
+      "adapterId": "berlinovo-de",
+      "label": "berlinovo Apartments",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.backend.berlinovo.de/de/apartments/apartmentanlagen"
+    },
+    {
+      "adapterId": "bgg-berlin-student-de",
+      "label": "BGG Berlinovo Studentenapartments",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.bgg-berlin.com/de/vermietung/apartmentanlagen"
+    },
+    {
+      "adapterId": "studierendenwerk-berlin-de",
+      "label": "studierendenWERK BERLIN",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.stw.berlin/en/housing/"
+    },
+    {
+      "adapterId": "studentendorf-berlin-de",
+      "label": "Studentendorf Berlin",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.studentendorf.berlin/de/wg-zimmer/"
+    },
+    {
+      "adapterId": "wunderflats-berlin-de",
+      "label": "Wunderflats",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://wunderflats.com/en/furnished-apartments/berlin"
+    },
+    {
+      "adapterId": "housinganywhere-berlin-de",
+      "label": "HousingAnywhere",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://housinganywhere.com/s/Berlin--Germany"
+    },
+    {
+      "adapterId": "spotahome-berlin-de",
+      "label": "Spotahome",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.spotahome.com/de/s/berlin"
+    },
+    {
+      "adapterId": "coming-home-berlin-de",
+      "label": "coming home",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.coming-home.com/mieten"
+    },
+    {
+      "adapterId": "urbanbnb-berlin-de",
+      "label": "Urbanbnb",
+      "strategies": [
+        "public_html"
+      ],
+      "workerSupport": true,
+      "defaultSearchUrl": "https://www.urbanbnb.de/page/de/wohnen-auf-zeit-berlin?lang=de"
+    },
+    {
+      "adapterId": "local-agency-rss-de",
+      "label": "Local Agency RSS",
+      "strategies": [
+        "rss"
+      ],
+      "workerSupport": true,
+      "requiresUserFeed": true
+    }
+  ],
+  "endpoints": [
+    "/health",
+    "/sources/meta",
+    "/sources/fetch"
+  ]
+}

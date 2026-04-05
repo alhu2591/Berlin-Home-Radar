@@ -1,100 +1,104 @@
-# Berlin Home Radar
+# HomeSync Berlin
 
-Berlin Home Radar is an offline-first Android app that aggregates Berlin housing listings from multiple source adapters, deduplicates them, persists them locally with Room, and refreshes in the background with WorkManager.
+Berlin-only rental aggregation MVP built with Expo Router + Zustand + SQLite, extended with worker-ready live connectors for Berlin housing sources.
 
-## Features
+## What changed in v2.0.1
+- Added **GitHub build files** for repository automation.
+- Added GitHub Actions for:
+  - app CI
+  - worker CI
+  - manual EAS builds
+  - manual Cloudflare Worker deploys
+- Added `.gitignore`, `.nvmrc`, `eas.json`, `workers/wrangler.toml`, and `GITHUB_SETUP.md`.
+- Added safer repository scripts for CI usage.
 
-- Offline-first listings backed by Room
-- Multiple isolated source adapters (`bundled-json`, `bundled-html`, optional remote adapter)
-- Deduplication by `source + externalId`, then fallback heuristics
-- Manual refresh and periodic background sync
-- Compose Material 3 UI
-- Hilt dependency injection
-- DataStore-backed user settings
-- Favorites and filters
-- Clean Architecture (`presentation`, `domain`, `data`)
+## What changed in v2.0.0
+- Added a **deeper live-probe layer** for Berlin worker sources, including detail-page preview metrics and sample parsed titles.
+- Retained the live connector coverage for:
+  - ImmobilienScout24
+  - Immowelt
+  - Immonet
+  - WG-Gesucht
+  - Kleinanzeigen
+  - Wohnungsboerse
+  - Local Agency RSS / Atom feeds
+- Added **advanced source config** inside the app:
+  - worker fetch strategy
+  - district filter
+  - custom search URL override
+  - RSS / Atom feed URLs
+  - include houses toggle
+  - WG-Gesucht mode (rooms / apartments / both)
+- Added a **Cloudflare Worker starter implementation** under `workers/src`
+- Added `workers/wrangler.example.toml` and `.dev.vars.example`
+- Added source manifest coverage and integration notes
 
-## Tech stack
+## App status
+This is still an MVP / scaffold-first codebase.
 
-- Kotlin
-- Jetpack Compose + Material 3
-- Coroutines + Flow
-- Hilt
-- Room
-- DataStore
-- WorkManager
-- Navigation Compose
-- Retrofit
-- Jsoup
-- Coil
+What is now stronger:
+- Berlin-only source catalog
+- worker-ready runtime configuration
+- source-by-source live connector settings
+- backup / restore
+- diagnostics / source health / sync history / alerts / insights
+- GitHub CI / build / deploy scaffolding
 
-## Setup
+What is still not verified in this environment:
+- `npm install`
+- running Expo end-to-end
+- building iOS / Android binaries
+- production legality / anti-bot handling for every public source
 
-1. Open the project in Android Studio Iguana / Koala or newer.
-2. Let Gradle sync.
-3. Run the `app` configuration on an emulator or device with minSdk 26+.
-4. The app works out of the box using bundled demo listing sources.
-5. Optional: enable the remote source in **Settings** and point it at your own feed implementation later.
+## Running the app
+```bash
+npm install
+npm run start
+```
 
-## Architecture
+## GitHub automation
+See:
+- `GITHUB_SETUP.md`
+- `.github/workflows/app-ci.yml`
+- `.github/workflows/worker-ci.yml`
+- `.github/workflows/eas-build.yml`
+- `.github/workflows/worker-deploy.yml`
 
-- `presentation`: Compose UI, navigation, ViewModels, UI state
-- `domain`: pure Kotlin models, repository contract, use cases
-- `data`: Room, DataStore, source adapters, sync worker, repository implementation
+## Runtime setup
+Inside the app, open:
+- Settings → Runtime & connectors
 
-## Background sync note
+Recommended modes:
+- `demo` for offline/demo use
+- `worker_hybrid` to try live workers and fall back to demo data
+- `worker_only` to force live worker fetching
 
-Android does not guarantee 5-minute periodic execution. The app uses `WorkManager` with the platform-safe minimum periodic interval of 15 minutes. The UI explains this constraint and always offers manual refresh.
+## Worker setup
+See:
+- `WORKER_CONTRACT.md`
+- `workers/README.md`
+- `workers/wrangler.toml`
+- `workers/.dev.vars.example`
 
-## No secrets
+Typical flow:
+1. Deploy the worker.
+2. Put its base URL into Runtime settings.
+3. Save an optional bearer token.
+4. Set specific sources to `worker` execution mode.
+5. Test each Berlin source from its source detail screen.
 
-This project contains no API keys or hardcoded secrets. The optional remote source adapter is disabled by default.
+## Berlin source coverage
+| Source | Strategy | Notes |
+|---|---|---|
+| ImmobilienScout24 | auto / official API / public HTML | Can use official partner API if credentials exist; otherwise public-page fallback |
+| Immowelt | public HTML | Result-page parsing with URL override |
+| Immonet | public HTML | Result-page parsing with URL override |
+| WG-Gesucht | public HTML | Rooms / apartments / both |
+| Kleinanzeigen | public HTML | Marketplace-style public results |
+| Wohnungsboerse | public HTML | Long-tail Berlin coverage |
+| Local Agency RSS | RSS / Atom | Feed URL(s) provided by you |
 
-## Production notes
-
-- Room migrations are declared for schema version 1.
-- Network failures never erase local data.
-- Sync status is persisted and surfaced in UI.
-- Source adapters are isolated and easy to extend.
-
-
-## CI
-
-This project includes a GitHub Actions workflow at `.github/workflows/android-build.yml` that builds the debug APK with JDK 21 and uploads it as an artifact.
-
-
-## Added in this updated build
-
-- Arabic, English, and German localization with system-follow default and manual override
-- Theme mode: system, light, dark
-- Professional filters: favorites, query, rooms, area, max price, district, source, Jobcenter, Wohngeld, WBS
-- Sync interval selection: manual, 15 min, 30 min, 1 hour, 3 hours
-- Catalog of major Berlin housing sources, with automated sync clearly marked only for supported adapters
-
-## Production extras included
-
-- Debug network security configuration that trusts user-installed certificates in debug builds, which helps when testing behind corporate proxies or local inspection tools.
-- Friendly sync error messages instead of exposing raw SSL exceptions in the UI.
-- Release workflow for APK/AAB output via GitHub Actions.
-- Optional signing via GitHub secrets:
-  - `ANDROID_KEYSTORE_BASE64`
-  - `ANDROID_KEYSTORE_PASSWORD`
-  - `ANDROID_KEY_ALIAS`
-  - `ANDROID_KEY_PASSWORD`
-- First-run onboarding screen.
-- Unit tests for deduplication and sync interval mapping.
-- Pluggable telemetry interfaces (`AnalyticsLogger`, `CrashReporter`) with logcat implementations by default.
-
-## Optional Firebase setup
-
-This project does **not** force Firebase so the repository continues to build without a `google-services.json` file.
-If you want real production crash reporting and analytics, wire the telemetry interfaces to Firebase Crashlytics and Analytics after adding Firebase configuration for your app. Firebase's official Android setup requires adding Firebase to the project and then adding the Crashlytics SDK and, for breadcrumb logs, enabling Analytics. citeturn459038search0turn459038search8
-
-
-## Android 16 compatibility
-
-- AGP 8.10.1
-- Gradle 8.11.1
-- compileSdk 36
-- targetSdk 36
-- CI installs Android SDK Platform 36 and Build Tools 36.0.0
+## Notes
+- The worker code is designed as a realistic starting point, not a guaranteed stable scraper.
+- For sources with official access programs, prefer contractual/API integrations over public-page parsing when available.
+- The GitHub Actions setup is intentionally conservative: CI is automatic, while mobile builds and worker deploys are manual.

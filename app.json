@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "HomeSync Berlin",
+    "slug": "homesync-berlin",
+    "version": "2.0.1",
+    "scheme": "homesyncberlin",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
