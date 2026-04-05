@@ -1,7 +1,0 @@
-name = "homesync-berlin-workers"
-main = "src/index.ts"
-compatibility_date = "2026-04-05"
-workers_dev = true
-
-[vars]
-HOMESYNC_REGION = "berlin"
