@@ -1,0 +1,16 @@
+{
+  "name": "@berlin-home-radar/connectors",
+  "private": true,
+  "version": "2.6.1",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "npm run typecheck"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.2",
+    "wrangler": "^4.9.0"
+  }
+}

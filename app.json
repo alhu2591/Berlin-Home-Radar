@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Berlin Home Radar",
+    "slug": "berlin-home-radar",
+    "version": "2.6.1",
+    "scheme": "berlinhomeradar",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.berlinhomeradar.mobile"
+    },
+    "android": {
+      "package": "com.berlinhomeradar.mobile"
+    }
+  },
+  "version": "2.5.1"
+}

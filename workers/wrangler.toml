@@ -1,0 +1,7 @@
+name = "berlin-home-radar-connectors"
+main = "src/index.ts"
+compatibility_date = "2026-04-05"
+workers_dev = true
+
+[vars]
+BERLIN_HOME_RADAR_REGION = "berlin"
